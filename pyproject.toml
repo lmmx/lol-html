@@ -1,0 +1,63 @@
+[build-system]
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"
+
+[dependency-groups]
+dev = [
+  "maturin[patchelf]>=1.8.2"
+]
+test = [
+  "pytest>=8.4",
+  "pytest-asyncio>=0.24"
+]
+
+[project]
+name = "lol-html-py"
+version = "0.1.0"
+description = "Async streaming Python bindings for lol_html, a low-output-latency HTML rewriter"
+readme = "README.md"
+authors = [
+  {name = "Louis Maddox", email = "louismmx@gmail.com"}
+]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["html", "streaming", "async", "lol-html", "rust"]
+classifiers = [
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Rust",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Operating System :: OS Independent",
+  "Topic :: Text Processing :: Markup :: HTML"
+]
+
+[project.license]
+file = "LICENSE"
+
+[project.scripts]
+lol-html = "lol_html:main"
+
+[project.urls]
+Homepage = "https://github.com/lmmx/lol-html"
+Repository = "https://github.com/lmmx/lol-html.git"
+Issues = "https://github.com/lmmx/lol-html/issues"
+
+[tool.maturin]
+features = [
+  "pyo3/extension-module"
+]
+python-source = "python"
+module-name = "lol_html._lol_html"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.uv]
+default-groups = "all"

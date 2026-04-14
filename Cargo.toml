@@ -1,0 +1,50 @@
+[dependencies]
+pyo3 = {version = "0.28", features = ["extension-module"]}
+pyo3-async-runtimes = {version = "0.28", features = ["tokio-runtime"]}
+tokio = {version = "1", features = ["rt-multi-thread", "sync", "macros"]}
+tokio-util = {version = "0.7", features = ["rt"]}
+lol_html = "2"
+ctor = "0.2"
+
+[lib]
+name = "lol_html"
+crate-type = ["cdylib"]
+
+[lints.clippy]
+pedantic = {level = "warn", priority = -1}
+nursery = {level = "warn", priority = -1}
+# Acceptable in PyO3 bindings code:
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+needless_pass_by_value = "allow" # PyO3 signatures often need owned values
+
+[package]
+name = "lol-html-py"
+version = "0.1.0"
+edition = "2021"
+description = "Async streaming Python bindings for lol_html, a low-output-latency HTML rewriter"
+license = "MIT"
+repository = "https://github.com/lmmx/lol-html"
+homepage = "https://github.com/lmmx/lol-html"
+readme = "README.md"
+authors = ["Louis Maddox <louismmx@gmail.com>"]
+keywords = ["html", "streaming", "async", "pyo3", "lol-html"]
+categories = ["text-processing", "asynchronous"]
+rust-version = "1.70"
+
+[profile.dev]
+opt-level = 0
+lto = false
+codegen-units = 256
+panic = "abort"
+debug = false
+strip = "debuginfo"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+debug = false
+strip = "symbols"
