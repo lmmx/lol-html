@@ -13,7 +13,7 @@ test = [
 
 [project]
 name = "lol-html-py"
-version = "0.0.0"
+version = "0.1.0"
 description = "Async streaming Python bindings for lol_html, a low-output-latency HTML rewriter"
 readme = "README.md"
 authors = [
