@@ -48,3 +48,7 @@ codegen-units = 1
 panic = "abort"
 debug = false
 strip = "symbols"
+
+[[example]]
+name = "bench_native"
+path = "examples/bench_native.rs"
