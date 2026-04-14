@@ -1,6 +1,6 @@
 # lol-html-py
 
-Async streaming Python bindings for [lol_html], the low-output-latency HTML
+Async streaming Python bindings for [lol_html], the **l**ow-**o**utput-**l**atency **HTML**
 rewriter from Cloudflare. Built on [PyO3] and [Tokio], integrates with
 `asyncio` via [pyo3-async-runtimes].
 
@@ -11,13 +11,14 @@ rewriter from Cloudflare. Built on [PyO3] and [Tokio], integrates with
 
 ## Why
 
-`lol_html` is designed for streaming — it can begin emitting output before
+`lol_html` is designed for streaming: it can begin emitting output before
 the full input has been received. Exposing that property to Python requires
 more than a thin FFI wrapper: per-chunk round trips across the PyO3 boundary
 will dominate runtime for small chunks. This package solves that by running
 the rewriter on a long-lived Tokio task, coalescing output in Rust, and
 crossing the FFI boundary only at channel endpoints with symmetric
-backpressure on both input and output.
+backpressure on both input and output. The chunk sizes that control the
+properties are all configurable.
 
 ## Install
 
@@ -52,8 +53,8 @@ asyncio.run(main())
 
 ## Configuration
 
-Four knobs control the latency/throughput trade-off. All have sensible
-defaults; all are overridable per instance and via environment variables.
+To control the latency/throughput trade-off we can vary the I/O and flushing parameters.
+These have sensible defaults and can be overridden per instance and via environment variables.
 
 | Constructor arg       | Env var                         | Default | Meaning                                                          |
 |-----------------------|---------------------------------|---------|------------------------------------------------------------------|
@@ -62,8 +63,8 @@ defaults; all are overridable per instance and via environment variables.
 | `flush_threshold`     | `LOL_HTML_FLUSH_THRESHOLD`      | `16384` | Bytes accumulated before flushing to the output channel          |
 | `flush_every_chunk`   | `LOL_HTML_FLUSH_EVERY_CHUNK`    | `false` | Force a flush after every input chunk, regardless of buffer size |
 
-Environment variables are read at library load time via a Rust constructor
-(`ctor`). Per-instance constructor arguments always win over env defaults.
+Note that environment variables are read at library load time via a Rust constructor.
+Per-instance constructor arguments always take priority over env vars.
 
 ### Operating points
 
