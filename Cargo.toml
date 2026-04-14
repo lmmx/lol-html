@@ -25,7 +25,7 @@ needless_pass_by_value = "allow" # PyO3 signatures often need owned values
 
 [package]
 name = "lol-html-py"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Async streaming Python bindings for lol_html, a low-output-latency HTML rewriter"
 license = "MIT"
