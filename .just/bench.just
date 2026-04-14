@@ -16,6 +16,6 @@ bench-compare:
     # Run Rust and Python scenario benches back-to-back for direct comparison
     # === Rust native ===
     cargo run --release --example bench_native
-    # 
+    #
     # === Python (lol-html-py) ===
     python examples/bench_scenarios.py

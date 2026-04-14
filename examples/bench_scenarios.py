@@ -16,6 +16,7 @@ from lol_html import AsyncRewriter
 
 # ---- payloads (identical to bench_native.rs) --------------------------------
 
+
 def make_payload(size: str) -> bytes:
     if size == "small":
         return b"<html><body>" + b"<p>hi</p>" * 100 + b"</body></html>"
@@ -33,12 +34,24 @@ def make_payload(size: str) -> bytes:
 # ---- scenarios --------------------------------------------------------------
 
 SCENARIOS = [
-    dict(name="SSE (per-chunk flush)",
-         chunk_size=256, flush_threshold=1, flush_every_chunk=True),
-    dict(name="general streaming",
-         chunk_size=4096, flush_threshold=16 * 1024, flush_every_chunk=False),
-    dict(name="high-throughput batch",
-         chunk_size=65536, flush_threshold=64 * 1024, flush_every_chunk=False),
+    dict(
+        name="SSE (per-chunk flush)",
+        chunk_size=256,
+        flush_threshold=1,
+        flush_every_chunk=True,
+    ),
+    dict(
+        name="general streaming",
+        chunk_size=4096,
+        flush_threshold=16 * 1024,
+        flush_every_chunk=False,
+    ),
+    dict(
+        name="high-throughput batch",
+        chunk_size=65536,
+        flush_threshold=64 * 1024,
+        flush_every_chunk=False,
+    ),
 ]
 
 
@@ -56,7 +69,7 @@ async def run_scenario(
 
     async def produce() -> None:
         for i in range(0, len(payload), chunk_size):
-            await rw.feed(payload[i:i + chunk_size])
+            await rw.feed(payload[i : i + chunk_size])
         rw.close()
 
     async def consume() -> tuple[int, int]:
@@ -72,6 +85,7 @@ async def run_scenario(
 
 
 # ---- harness ---------------------------------------------------------------
+
 
 def bench(fn, repeats: int, payload_len: int) -> dict:
     # warmup
@@ -107,16 +121,21 @@ def main() -> None:
             raise SystemExit(f"unknown arg: {flag}")
 
     payload = make_payload(payload_size)
-    print(f"payload: {payload_size} ({len(payload)} bytes, {len(payload) / 1024:.1f} KB)")
+    print(
+        f"payload: {payload_size} ({len(payload)} bytes, {len(payload) / 1024:.1f} KB)",
+    )
     print(f"repeats: {repeats}\n")
 
-    print(f"{'scenario':<70} {'mean μs':>10} {'stddev μs':>10} {'MB/s':>12} {'flushes':>8}")
+    print(
+        f"{'scenario':<70} {'mean μs':>10} {'stddev μs':>10} {'MB/s':>12} {'flushes':>8}",
+    )
     print("-" * 112)
     for s in SCENARIOS:
         label = (
             f"{s['name']:<24} [chunk={s['chunk_size']:>6}, "
             f"thresh={s['flush_threshold']:>6}, eager={s['flush_every_chunk']}]"
         )
+
         async def run(s=s):
             return await run_scenario(
                 payload,
@@ -124,9 +143,12 @@ def main() -> None:
                 flush_threshold=s["flush_threshold"],
                 flush_every_chunk=s["flush_every_chunk"],
             )
+
         r = bench(run, repeats, len(payload))
-        print(f"{label:<70} {r['mean_us']:>10.1f} {r['stddev_us']:>10.1f} "
-              f"{r['mbps']:>12.0f} {r['flushes']:>8}")
+        print(
+            f"{label:<70} {r['mean_us']:>10.1f} {r['stddev_us']:>10.1f} "
+            f"{r['mbps']:>12.0f} {r['flushes']:>8}",
+        )
 
 
 if __name__ == "__main__":
