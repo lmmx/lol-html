@@ -25,6 +25,8 @@ def medium_payload() -> bytes:
 def large_payload() -> bytes:
     return (
         b"<html><body>"
-        + b"<div><p>nested " + b"<span>stuff</span>" * 5 + b"</p></div>" * 20_000
+        + b"<div><p>nested "
+        + b"<span>stuff</span>" * 5
+        + b"</p></div>" * 20_000
         + b"</body></html>"
     )

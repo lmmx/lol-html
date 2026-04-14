@@ -11,7 +11,7 @@ test = [
   "pytest-asyncio>=0.24"
 ]
 bench = [
-  "pytest-benchmark>=4.0",
+  "pytest-benchmark>=4.0"
 ]
 
 [project]
@@ -62,8 +62,8 @@ module-name = "lol_html._lol_html"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 markers = [
-    "slow: slower tests, skipped in quick runs",
-    "benchmark: throughput benchmarks",
+  "slow: slower tests, skipped in quick runs",
+  "benchmark: throughput benchmarks"
 ]
 
 [tool.uv]

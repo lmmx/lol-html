@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
 
 from lol_html import AsyncRewriter
 
@@ -41,7 +40,7 @@ async def test_first_output_latency_is_low() -> None:
     elapsed = loop.time() - t0
 
     # Even generously, this should be well under 100ms on any CI.
-    assert elapsed < 0.1, f"first-output latency was {elapsed*1000:.1f}ms"
+    assert elapsed < 0.1, f"first-output latency was {elapsed * 1000:.1f}ms"
     rw.cancel()
 
 

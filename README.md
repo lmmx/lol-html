@@ -177,7 +177,7 @@ cd lol-html
 pip install maturin
 maturin develop --release
 ```
-  
+
 ## License
 
 MIT © Louis Maddox

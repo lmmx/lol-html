@@ -21,7 +21,9 @@ def _run_with_env(script: str, env_overrides: dict[str, str]) -> str:
         text=True,
         timeout=30,
     )
-    assert result.returncode == 0, f"subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    assert result.returncode == 0, (
+        f"subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
     return result.stdout
 
 

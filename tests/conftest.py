@@ -43,6 +43,7 @@ async def iter_with_feeding(
 ) -> AsyncIterator[bytes]:
     """Feed from an async source while yielding output chunks. Useful for
     timing-sensitive tests: lets you observe output *during* input, not after."""
+
     async def pump() -> None:
         async for c in feeder:
             await rw.feed(c)

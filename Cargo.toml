@@ -6,6 +6,10 @@ tokio-util = {version = "0.7", features = ["rt"]}
 lol_html = "2"
 ctor = "0.2"
 
+[[example]]
+name = "bench_native"
+path = "examples/bench_native.rs"
+
 [lib]
 name = "lol_html"
 crate-type = ["cdylib"]
@@ -48,7 +52,3 @@ codegen-units = 1
 panic = "abort"
 debug = false
 strip = "symbols"
-
-[[example]]
-name = "bench_native"
-path = "examples/bench_native.rs"

@@ -8,7 +8,6 @@ proxy for "number of flushes"."""
 
 from __future__ import annotations
 
-import pytest
 
 from lol_html import AsyncRewriter
 from tests.conftest import collect_chunked, feed_all
@@ -16,6 +15,7 @@ from tests.conftest import collect_chunked, feed_all
 
 async def _run(rw: AsyncRewriter, chunks: list[bytes]) -> list[bytes]:
     import asyncio
+
     _, out = await asyncio.gather(feed_all(rw, chunks), collect_chunked(rw))
     return out
 

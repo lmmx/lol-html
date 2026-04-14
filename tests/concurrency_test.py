@@ -17,13 +17,15 @@ from tests.conftest import drive
 
 
 # A non-trivial payload — enough work that parse time is measurable.
-PAYLOAD = (b"<html><body>" + b"<p>item</p>" * 5000 + b"<script>bad()</script></body></html>")
+PAYLOAD = (
+    b"<html><body>" + b"<p>item</p>" * 5000 + b"<script>bad()</script></body></html>"
+)
 
 
 async def _single_run() -> bytes:
     rw = AsyncRewriter(flush_threshold=64 * 1024)
     # Feed in moderate chunks to exercise the streaming path.
-    chunks = [PAYLOAD[i:i + 4096] for i in range(0, len(PAYLOAD), 4096)]
+    chunks = [PAYLOAD[i : i + 4096] for i in range(0, len(PAYLOAD), 4096)]
     return await drive(rw, chunks)
 
 
