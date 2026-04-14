@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
 
 from lol_html import AsyncRewriter
 
 
 async def _drive(rw: AsyncRewriter, chunks: list[bytes]) -> bytes:
     """Feed ``chunks`` into ``rw`` and collect all output."""
+
     async def produce() -> None:
         for c in chunks:
             await rw.feed(c)
@@ -30,8 +30,10 @@ async def test_removes_script_and_style() -> None:
     rw = AsyncRewriter(flush_every_chunk=True)
     out = await _drive(
         rw,
-        [b"<html><head><style>x{}</style></head>",
-         b"<body><script>bad()</script><p>hi</p></body></html>"],
+        [
+            b"<html><head><style>x{}</style></head>",
+            b"<body><script>bad()</script><p>hi</p></body></html>",
+        ],
     )
     assert b"<script" not in out
     assert b"<style" not in out
