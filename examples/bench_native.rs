@@ -1,15 +1,12 @@
 //! Native Rust throughput benchmark — no Python, no FFI.
 //!
-//! Mirrors the scenarios in `tests/bench/bench_throughput.py` so you can
-//! directly compare the MB/s rate achievable with lol_html alone against
-//! the same workload driven through the Python async bindings. The gap
-//! between the two is the cost of: FFI boundary, channel hops, asyncio
-//! scheduling, PyBytes allocation, and GIL re-acquisition.
+//! Runs the same three operating-point scenarios documented in the README
+//! (SSE / general streaming / batch) so numbers can be compared directly
+//! against the Python bench in tests/bench/.
 //!
-//! Run with:
-//!     cargo run --release --example bench_native
-//!     cargo run --release --example bench_native -- --payload large
-//!     cargo run --release --example bench_native -- --repeats 50
+//! The Rust side mirrors the bindings' flush policy (coalescing buffer with
+//! optional per-chunk force flush) so we're comparing like with like — the
+//! "Python tax" we isolate is FFI + asyncio only, not the buffering strategy.
 
 use std::env;
 use std::time::Instant;
@@ -54,12 +51,70 @@ fn make_payload(size: &str) -> Vec<u8> {
 
 // ---- scenarios --------------------------------------------------------------
 
-/// Run lol_html on `payload` in `chunk_size`-sized writes. No Python, no
-/// channels, no coalescing layer — just the parser and an output `Vec`.
-fn run_native(payload: &[u8], chunk_size: usize) -> usize {
-    let mut output: Vec<u8> = Vec::with_capacity(payload.len());
+/// Parameters matching the Python `AsyncRewriter` config.
+#[derive(Clone, Copy)]
+struct Scenario {
+    name: &'static str,
+    chunk_size: usize,
+    flush_threshold: usize,
+    flush_every_chunk: bool,
+}
+
+const SCENARIOS: &[Scenario] = &[
+    // SSE: every input chunk produces an output chunk immediately.
+    Scenario {
+        name: "SSE (per-chunk flush)",
+        chunk_size: 256,
+        flush_threshold: 1,
+        flush_every_chunk: true,
+    },
+    // General streaming: default-ish config, moderate chunks.
+    Scenario {
+        name: "general streaming",
+        chunk_size: 4096,
+        flush_threshold: 16 * 1024,
+        flush_every_chunk: false,
+    },
+    // Batch: big chunks, big flush threshold — throughput over latency.
+    Scenario {
+        name: "high-throughput batch",
+        chunk_size: 65536,
+        flush_threshold: 64 * 1024,
+        flush_every_chunk: false,
+    },
+];
+
+/// Run lol_html with the bindings' coalescing sink behavior emulated.
+/// Returns (total_output_bytes, number_of_flushes).
+fn run_scenario(payload: &[u8], s: Scenario) -> (usize, usize) {
+    // Coalescing buffer, matching src/rewriter.rs behavior.
+    let mut coalesce: Vec<u8> = Vec::with_capacity(s.flush_threshold.max(4096));
+    // "Channel": in the Python version this would be an mpsc::channel
+    // sending Vec<u8>. Here we simulate by counting flushes and total bytes.
+    let mut total_out = 0usize;
+    let mut flushes = 0usize;
+
+    let mut do_flush = |buf: &mut Vec<u8>, force: bool| {
+        let should = !buf.is_empty()
+            && (force || (s.flush_threshold > 0 && buf.len() >= s.flush_threshold));
+        if should {
+            total_out += buf.len();
+            flushes += 1;
+            buf.clear();
+        }
+    };
+
     {
-        let sink = |c: &[u8]| output.extend_from_slice(c);
+        // Sink writes into the coalescing buffer. This is the exact shape
+        // used in rewriter.rs (Rc<RefCell<Vec>> there; bare &mut here since
+        // we're single-threaded and don't need the async machinery).
+        let coalesce_ptr: *mut Vec<u8> = &mut coalesce;
+        let sink = move |c: &[u8]| {
+            // Safety: the closure, the rewriter, and the buffer all live
+            // within this scope; no aliasing.
+            unsafe { (*coalesce_ptr).extend_from_slice(c) };
+        };
+
         let mut rw = HtmlRewriter::new(
             Settings {
                 element_content_handlers: vec![
@@ -70,22 +125,18 @@ fn run_native(payload: &[u8], chunk_size: usize) -> usize {
             },
             sink,
         );
-        for chunk in payload.chunks(chunk_size) {
+
+        for chunk in payload.chunks(s.chunk_size) {
             rw.write(chunk).expect("write");
+            do_flush(&mut coalesce, s.flush_every_chunk);
         }
         rw.end().expect("end");
     }
-    output.len()
-}
 
-/// Null baseline: just copy the payload chunk-by-chunk into an output Vec.
-/// Represents the theoretical floor for "do nothing useful".
-fn run_null(payload: &[u8], chunk_size: usize) -> usize {
-    let mut output: Vec<u8> = Vec::with_capacity(payload.len());
-    for chunk in payload.chunks(chunk_size) {
-        output.extend_from_slice(chunk);
-    }
-    output.len()
+    // Final flush of any remainder.
+    do_flush(&mut coalesce, true);
+
+    (total_out, flushes)
 }
 
 // ---- bench harness ----------------------------------------------------------
@@ -95,40 +146,36 @@ struct Result {
     mean_us: f64,
     stddev_us: f64,
     mbps: f64,
-    out_bytes: usize,
+    flushes: usize,
 }
 
-fn bench<F: FnMut() -> usize>(name: impl Into<String>, repeats: usize, payload_len: usize, mut f: F) -> Result {
-    // Warmup
-    for _ in 0..3 {
-        let _ = f();
-    }
+fn bench<F: FnMut() -> (usize, usize)>(
+    name: impl Into<String>,
+    repeats: usize,
+    payload_len: usize,
+    mut f: F,
+) -> Result {
+    for _ in 0..3 { let _ = f(); } // warmup
     let mut samples = Vec::with_capacity(repeats);
-    let mut out_bytes = 0;
+    let mut flushes = 0usize;
     for _ in 0..repeats {
         let t0 = Instant::now();
-        out_bytes = f();
+        let (_, fl) = f();
         samples.push(t0.elapsed().as_secs_f64() * 1e6);
+        flushes = fl;
     }
     let mean = samples.iter().sum::<f64>() / samples.len() as f64;
     let var = samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / samples.len() as f64;
     let stddev = var.sqrt();
     let mbps = (payload_len as f64) / (mean / 1e6) / 1e6;
-    Result {
-        name: name.into(),
-        mean_us: mean,
-        stddev_us: stddev,
-        mbps,
-        out_bytes,
-    }
+    Result { name: name.into(), mean_us: mean, stddev_us: stddev, mbps, flushes }
 }
 
 // ---- main -------------------------------------------------------------------
 
 fn main() {
-    // Tiny arg parser — keeps the example dep-free.
     let mut payload_size = "medium".to_string();
-    let mut repeats = 20usize;
+    let mut repeats = 50usize;
     let args: Vec<String> = env::args().collect();
     let mut i = 1;
     while i < args.len() {
@@ -141,44 +188,23 @@ fn main() {
 
     let payload = make_payload(&payload_size);
     let payload_len = payload.len();
-    println!("payload: {} ({} bytes, {:.1} KB)\n", payload_size, payload_len, payload_len as f64 / 1024.0);
-
-    let chunk_sizes = [256usize, 4096, 16384, 65536];
+    println!("payload: {} ({} bytes, {:.1} KB)", payload_size, payload_len, payload_len as f64 / 1024.0);
+    println!("repeats: {}\n", repeats);
 
     let mut results: Vec<Result> = Vec::new();
-
-    // Null baseline — memcpy ceiling
-    for &cs in &chunk_sizes {
-        results.push(bench(format!("null_copy          [chunk={cs:>6}]"), repeats, payload_len,
-            || run_null(&payload, cs)));
+    for s in SCENARIOS {
+        let label = format!(
+            "{:<24} [chunk={:>6}, thresh={:>6}, eager={}]",
+            s.name, s.chunk_size, s.flush_threshold, s.flush_every_chunk
+        );
+        results.push(bench(label, repeats, payload_len, || run_scenario(&payload, *s)));
     }
 
-    // Real lol_html work
-    for &cs in &chunk_sizes {
-        results.push(bench(format!("lol_html_native    [chunk={cs:>6}]"), repeats, payload_len,
-            || run_native(&payload, cs)));
-    }
-
-    // Print a table that lines up with the pytest-benchmark output
-    println!("{:<40} {:>12} {:>12} {:>14} {:>14}",
-        "scenario", "mean (us)", "stddev (us)", "throughput", "out bytes");
-    println!("{}", "-".repeat(96));
+    println!("{:<70} {:>10} {:>10} {:>12} {:>8}",
+        "scenario", "mean μs", "stddev μs", "MB/s", "flushes");
+    println!("{}", "-".repeat(112));
     for r in &results {
-        println!("{:<40} {:>12.1} {:>12.1} {:>10.0} MB/s {:>14}",
-            r.name, r.mean_us, r.stddev_us, r.mbps, r.out_bytes);
+        println!("{:<70} {:>10.1} {:>10.1} {:>12.0} {:>8}",
+            r.name, r.mean_us, r.stddev_us, r.mbps, r.flushes);
     }
-
-    // Quick summary
-    let best_native = results.iter()
-        .filter(|r| r.name.starts_with("lol_html_native"))
-        .min_by(|a, b| a.mean_us.partial_cmp(&b.mean_us).unwrap())
-        .unwrap();
-    let best_null = results.iter()
-        .filter(|r| r.name.starts_with("null_copy"))
-        .min_by(|a, b| a.mean_us.partial_cmp(&b.mean_us).unwrap())
-        .unwrap();
-    println!("\nbest native lol_html: {:.0} MB/s", best_native.mbps);
-    println!("best null (memcpy):   {:.0} MB/s", best_null.mbps);
-    println!("native parse overhead vs memcpy: {:.2}x", best_null.mbps / best_native.mbps);
-    println!("\nCompare against your pytest-benchmark numbers to get the FFI + asyncio tax.");
 }

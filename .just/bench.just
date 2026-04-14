@@ -1,20 +1,21 @@
 # Benchmark the package
-bench:
-    #!/usr/bin/env -S echo-comment --shell-flags="-e" --color bright-green
-    # Full suite minus benchmarks and slow tests
-    pytest tests/bench --benchmark-only --benchmark-columns=mean,stddev,ops
-
 bench-native:
     #!/usr/bin/env -S echo-comment --shell-flags="-e" --color bright-green
     # Run the native Rust code example to bench speed without Python
     cargo run --release --example bench_native
 
-bench-save-baseline:
+# Run the scenario bench side of the Python bindings
+bench-python:
     #!/usr/bin/env -S echo-comment --shell-flags="-e" --color bright-green
-    # Save a baseline, then compare after changes
-    pytest tests/bench --benchmark-only --benchmark-autosave
+    # Run Python scenario bench matching the Rust example
+    python examples/bench_scenarios.py
 
-bench-compare-baseline:
+# Run both side-by-side, on the same payload
+bench-compare:
     #!/usr/bin/env -S echo-comment --shell-flags="-e" --color bright-green
-    # After making changes, compare to baseline
-    pytest tests/bench --benchmark-only --benchmark-compare
+    # Run Rust and Python scenario benches back-to-back for direct comparison
+    # === Rust native ===
+    cargo run --release --example bench_native
+    # 
+    # === Python (lol-html-py) ===
+    python examples/bench_scenarios.py

@@ -102,24 +102,25 @@ Python producer ──feed()──▶ [input channel, bounded] ──▶ parser 
 Benchmarks are split across two harnesses to isolate parse cost from PyO3 FFI + asyncio cost:
 
 ```bash
-just bench          # Python async pipeline via pytest-benchmark
-just bench-native   # Pure Rust baseline — no Python, no FFI
+just bench-compare   # Run both back-to-back for direct comparison
+just bench-native    # Pure Rust baseline
+just bench-python    # Python async pipeline
 ```
 
-On a 110 KB HTML payload (`medium` in the bench suite) we get:
+On a 110 KB HTML payload (`medium` in the bench suite):
 
-| Scenario                            | Throughput   | vs. native |
-|-------------------------------------|--------------|------------|
-| `null_copy` — memcpy ceiling        | ~58,000 MB/s | —          |
-| `lol_html_native` — Rust only       | ~164 MB/s    | 1.00×      |
-| `lol_html_py` — async Python        | ~113 MB/s    | 0.69×      |
+| Scenario              | Config                                       | Native Rust | Python bindings | Python / Native |
+|-----------------------|----------------------------------------------|-------------|-----------------|-----------------|
+| `null_copy`           | memcpy ceiling                               | ~58,000 MB/s | —              | —               |
+| SSE / per-chunk flush | `chunk=256, thresh=1, flush_every_chunk=T`   | 158 MB/s    | 4 MB/s          | 2.5%            |
+| General streaming     | `chunk=4096, thresh=16384`                   | 165 MB/s    | 71 MB/s         | 43%             |
+| High-throughput batch | `chunk=65536, thresh=65536`                  | 158 MB/s    | 113 MB/s        | 72%             |
 
-The 1.45× gap between native and Python comes from crossing the FFI boundary,
-sending data over Tokio channels, asyncio scheduling, and allocating a `PyBytes`
-object for each output chunk. On this payload that adds up to roughly 300 μs
-per run, most of which is fixed per invocation (not per byte), so will
-matter less on larger documents and more on smaller ones.
-
+The gap between native and Python comes from crossing the FFI boundary, sending
+data over Tokio channels, asyncio scheduling, and allocating a `PyBytes` object
+for each output chunk. Most of that cost is *per FFI crossing*, not per byte —
+so it compounds when you do many small crossings (SSE: 860 round-trips per
+document) and amortizes when you do few (batch: 2 round-trips per document).
 
 ### How input chunk size affects throughput
 
@@ -139,10 +140,10 @@ an SSE stream with small events), buffer them in Python before calling `feed()`.
 
 ### How flush policy affects throughput
 
-With `flush_every_chunk=True` and `flush_threshold=1`, the bench runs at
-~52 MB/s instead of ~113 MB/s — roughly 2× slower. Every input chunk causes
-one output channel send, one `PyBytes` allocation, and one GIL reacquisition
-on the Python side.
+With `flush_every_chunk=True` and `flush_threshold=1`, the bench runs at ~4 MB/s
+instead of ~71 MB/s at the same chunk size — roughly 17× slower. Every input
+chunk causes one output channel send, one `PyBytes` allocation, and one GIL
+reacquisition on the Python side.
 
 With the defaults (threshold 16 KB, no per-chunk flush) the rewriter batches
 output until it has ~16 KB to send, which is usually one or two sends for a
@@ -153,13 +154,18 @@ output before the next one arrives — server-sent events, incremental rendering
 anything the downstream consumer treats as a real-time stream. Otherwise the
 default will be faster.
 
+In the Rust bench the same eager flushing costs essentially nothing (SSE and
+batch both take ~695 μs), because on the Rust side a "flush" is a buffer clear,
+not an FFI crossing. The entire cost of eager mode is the Python integration.
+
 ### Is 113 MB/s good?
 
 Compared to raw memcpy (~58,000 MB/s), native lol_html is 355× slower. That
-reflects the work of tokenizing HTML and matching element handlers —
-lol_html isn't memory-bound, it's CPU-bound on parse logic. The Python bindings
-achieve ~70% of native throughput, so the async layer is taking a meaningful
-but not dominant share of total time.
+reflects the work of tokenizing HTML and matching element handlers — lol_html
+isn't memory-bound, it's CPU-bound on parse logic. The Python bindings achieve
+~70% of native throughput in the batch configuration, so the async layer is
+taking a meaningful but not dominant share of total time when you're not
+forcing per-chunk flushes.
 
 ## Development
 
