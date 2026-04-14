@@ -25,15 +25,6 @@ backpressure on both input and output.
 pip install lol-html-py
 ```
 
-Or from source:
-
-```bash
-git clone https://github.com/lmmx/lol-html
-cd lol-html
-pip install maturin
-maturin develop --release
-```
-
 ## Usage
 
 ```python
@@ -168,6 +159,23 @@ reflects the work of tokenizing HTML and matching element handlers —
 lol_html isn't memory-bound, it's CPU-bound on parse logic. The Python bindings
 achieve ~70% of native throughput, so the async layer is taking a meaningful
 but not dominant share of total time.
+
+## Development
+
+Build from source, with uv:
+
+```bash
+uv sync
+```
+
+or with pip:
+
+```bash
+git clone https://github.com/lmmx/lol-html
+cd lol-html
+pip install maturin
+maturin develop --release
+```
   
 ## License
 
