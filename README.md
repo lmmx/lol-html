@@ -1,5 +1,12 @@
 # lol-html-py
 
+<!-- [![downloads](https://static.pepy.tech/badge/lol-html-py/month)](https://pepy.tech/project/lol-html-py) -->
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![PyPI](https://img.shields.io/pypi/v/lol-html-py.svg)](https://pypi.org/project/lol-html-py)
+[![Supported Python versions](https://img.shields.io/pypi/pyversions/lol-html-py.svg)](https://pypi.org/project/lol-html-py)
+[![License](https://img.shields.io/pypi/l/lol-html-py.svg)](https://pypi.python.org/pypi/lol-html-py)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/lmmx/lol-html/master.svg)](https://results.pre-commit.ci/latest/github/lmmx/lol-html/master)
+
 Async streaming Python bindings for [lol_html], the **l**ow-**o**utput-**l**atency **HTML**
 rewriter from Cloudflare. Built on [PyO3] and [Tokio], integrates with
 `asyncio` via [pyo3-async-runtimes].
