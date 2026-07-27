@@ -13,7 +13,6 @@ import time
 
 from lol_html import AsyncRewriter
 
-
 # ---- payloads (identical to bench_native.rs) --------------------------------
 
 

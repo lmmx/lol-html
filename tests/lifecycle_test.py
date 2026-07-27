@@ -6,7 +6,6 @@ import asyncio
 import gc
 
 import pytest
-
 from lol_html import AsyncRewriter
 
 
