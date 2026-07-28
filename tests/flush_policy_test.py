@@ -8,8 +8,8 @@ proxy for "number of flushes"."""
 
 from __future__ import annotations
 
-
 from lol_html import AsyncRewriter
+
 from tests.conftest import collect_chunked, feed_all
 
 

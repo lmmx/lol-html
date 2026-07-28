@@ -11,10 +11,9 @@ import asyncio
 import time
 
 import pytest
-
 from lol_html import AsyncRewriter
-from tests.conftest import drive
 
+from tests.conftest import drive
 
 # A non-trivial payload — enough work that parse time is measurable.
 PAYLOAD = (
