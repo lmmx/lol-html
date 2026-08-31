@@ -39,6 +39,7 @@ pip install lol-html-py
 import asyncio
 from lol_html import AsyncRewriter
 
+
 async def main():
     rw = AsyncRewriter()
 
@@ -54,6 +55,7 @@ async def main():
 
     _, result = await asyncio.gather(produce(), consume())
     print(result)
+
 
 asyncio.run(main())
 ```
