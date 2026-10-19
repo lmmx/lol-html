@@ -20,7 +20,7 @@ version = "0.1.2"
 description = "Async streaming Python bindings for lol_html, a low-output-latency HTML rewriter"
 readme = "README.md"
 authors = [
-  {name = "Louis Maddox", email = "louismmx@gmail.com"}
+  { name = "Louis Maddox", email = "louismmx@gmail.com" }
 ]
 requires-python = ">=3.9"
 dependencies = []
